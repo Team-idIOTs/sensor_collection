@@ -4,7 +4,7 @@
 #import ctypes
 import pyrebase
 from creds import config
-
+from creds import pi_number
 firebase = pyrebase.initialize_app(config)
 db = firebase.database()
 
@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
         data = {"accelerometer" : { "x" : cax, "y" : cay, "z" : caz}, 
                 "gyroscope" : { "x" : cgx, "y" : cgy, "z" : cgz}}
-        db.child("IMU").push(data)
+        db.child("rasp" + str(pi_number)).child("IMU").push(data)
 
         print("Gyro: %f, %f, %f [deg/s]" % (cgx, cgy, cgz))
         print("Accel: %f, %f, %f [Gs]" % (cax, cay, caz))
