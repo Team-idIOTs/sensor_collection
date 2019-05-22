@@ -3,8 +3,11 @@
 
 #import ctypes
 from ctypes import *
+from creds import *
 import sys
+import pyrebase
 import time
+import os
 path = "../LSM9DS1_RaspberryPi_Library/lib/liblsm9ds1cwrapper.so"
 lib = cdll.LoadLibrary(path)
 
@@ -60,17 +63,13 @@ lib.lsm9ds1_calcMag.argtypes = [c_void_p, c_float]
 lib.lsm9ds1_calcMag.restype = c_float
 
 
-f = open("data" + sys.argv[1], 'w')
+firebase = pyrebase.initialize_app(config)
+db = firebase.database()
 
-if __name__ == "__main__":
-    imu = lib.lsm9ds1_create()
-    lib.lsm9ds1_begin(imu)
-    if lib.lsm9ds1_begin(imu) == 0:
-        print("Failed to communicate with LSM9DS1.")
-        quit()
-    lib.lsm9ds1_calibrate(imu)
-
-    while True:
+def collect_data():
+ startTime=time.time()
+ data = {}
+ while (time.time()-startTime) < 10:
         while lib.lsm9ds1_gyroAvailable(imu) == 0:
             pass
         lib.lsm9ds1_readGyro(imu)
@@ -105,9 +104,18 @@ if __name__ == "__main__":
         cmy = lib.lsm9ds1_calcMag(imu, my)
         cmz = lib.lsm9ds1_calcMag(imu, mz)
 
-       # print("Gyro: %f, %f, %f [deg/s]" % (cgx, cgy, cgz))
-       # print("Accel: %f, %f, %f [Gs]" % (cax, cay, caz))
-       # print("Mag: %f, %f, %f [gauss]" % (cmx, cmy, cmz))
-        f.write("%f, %f, %f, %f, %f, %f, %f \n" % (cax, cay, caz, cgx, cgy, cgz, time.time()))
-        print("Written\n")
+        data[str(time.time()).replace(".", " ")] = {"accelerometer" : {"x" : cax, "y" : cay, "z" : caz}, "gyroscope" : {"x" : cgx, "y" : cgy, "z" : cgz}}
         time.sleep(0.005)
+ db.child("rasp" + str(pi_number)).child("IMU").set(data)
+
+if __name__ == "__main__":
+    imu = lib.lsm9ds1_create()
+    lib.lsm9ds1_begin(imu)
+    if lib.lsm9ds1_begin(imu) == 0:
+        print("Failed to communicate with LSM9DS1.")
+        quit()
+    lib.lsm9ds1_calibrate(imu)
+    while True:
+        collect_data()
+        print("Collected")
+
